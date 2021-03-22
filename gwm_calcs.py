@@ -7,11 +7,10 @@ Created on Sun Jul 14 15:53:16 2019
 
 import random
 
-rounds = 1000000
 
 d20 = (1, 20)
 d12 = (1, 12)
-d6 = (1,6)
+d6 = (1, 6)
 d10 = (1, 10)
 
 def roll(number, die, gwf = False):
@@ -19,22 +18,25 @@ def roll(number, die, gwf = False):
     for i in range(number):
         num = random.randint(die[0], die[1])
         if gwf:
-            if num == 1:
+            if num == 1 or num == 2:
                 num = random.randint(die[0], die[1])
         result += num
     return result
 
 player = {
-        'str_mod': 4,
-        'prof': 3,
-        'rage': 2
+        'stat_mod': 5,
+        'prof': 4,
+        'rage': 3,
+        'gwf': False,
+        'brutal':1,
+        'num_atks':2
         }
 
 def attack(reckless, gwm, player, magic, number, die, ac):
-    result = 0
-    bonus_atk = player['str_mod'] + player['prof'] + magic
-    bonus_dmg = player['str_mod'] + player['rage'] + magic
-    ba_atk = False
+    damage = 0
+    bonus_atk = player['stat_mod'] + player['prof'] + magic
+    bonus_dmg = player['stat_mod'] + player['rage'] + magic
+    crit = False
     
     to_hit = random.randint(d20[0], d20[1])
     
@@ -47,55 +49,57 @@ def attack(reckless, gwm, player, magic, number, die, ac):
         bonus_atk -= 5
         bonus_dmg += 10
 #    print('To Hit: ', to_hit, to_hit+bonus_atk)
-    n = 1
+    n = number
     if to_hit == 20:
-        n = 2
-        ba_atk = True
+        n = 2*number + player['brutal']
+        crit = True
 #        print('CRIT')
     
     if to_hit + bonus_atk >= ac:
-        result += roll(n*number, die) + bonus_dmg
+        damage += roll(n, die) + bonus_dmg
 #        print('HIT: Damage:', result)
 #    else:
 #        print('MISS')
-    return result, ba_atk
+    return damage, crit
 
 def turn(number, die, ac, player, gwm, magic, reckless):
-    result = 0
+    damage = 0
     crits = 0
     misses = 0
-    num_attacks = 2
+    num_attacks = player['num_atks']
 #    First Attack
     ba_atk = False
 #    print('Atk 1')
-    n, x = attack(reckless, gwm, player, magic, number, die, ac)
-    result += n
-    if x:
-        ba_atk = True
-        crits +=1
-    if n == 0:
-        misses += 1
+    for i in range(player['num_atks']):
+        dmg, crit = attack(reckless, gwm, player, magic, number, die, ac)
+        damage += dmg
+        if crit:
+            crits +=1
+            if gwm:
+                ba_atk = True
+        if dmg == 0:
+                misses += 1
 #    Second Attack
 #    print('Atk 2')
-    n, x = attack(reckless, gwm, player, magic, number, die, ac)
-    result += n
-    if x:
-        ba_atk = True
-        crits += 1
-    if n == 0:
-        misses += 1
+#    n, x = attack(reckless, gwm, player, magic, number, die, ac)
+#    result += n
+#    if x:
+#        ba_atk = True
+#        crits += 1
+#    if n == 0:
+#        misses += 1
     
     if ba_atk:
         num_attacks +=1
 #        print('Bonus Action Attack')
-        n, x = attack(reckless, gwm, player, magic, number, die, ac)
-        result += n
+        dmg, x = attack(reckless, gwm, player, magic, number, die, ac)
+        damage += dmg
         if x:
             crits += 1
-        if n == 0:
+        if dmg == 0:
             misses += 1
     
-    return result, crits, num_attacks, misses
+    return damage, crits, num_attacks, misses
     
     
     
@@ -108,17 +112,11 @@ reck_axe = [0, 'Reckless Axe', 0, 0, 0]
 reck_maul = [0, 'Reckless Maul', 0, 0, 0]
 gwm_reck_axe = [0, 'Reck GWM Axe', 0, 0, 0]
 gwm_reck_maul = [0, 'Reck GWM Maul', 0, 0, 0]
-crits = 0
-reck_crits = 0
 
-str_mod = 4
-prof = 3
+target_ac = 17
+rounds = 1000000
 
-rage = 2
-
-target_ac = 14
-
-for i in range(rounds):    
+for i in range(rounds):
 #    Normal Attacks
 #    print('----------Axe Normal-------')
     res = turn(1, d10, target_ac, player, False, 1, False)
